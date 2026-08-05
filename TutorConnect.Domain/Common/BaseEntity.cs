@@ -1,30 +1,15 @@
 namespace TutorConnect.Domain.Common
 {
     /// <summary>
-    /// Base class for domain entities that use a Guid key and UTC audit timestamps.
+    /// Base class for domain entities using a BIGINT identity primary key
     /// </summary>
     public abstract class BaseEntity
     {
-        public Guid Id { get; protected set; }
-        public DateTime CreatedAt { get; protected set; }
-        public DateTime? UpdatedAt { get; protected set; }
-
-        protected BaseEntity()
-        {
-            Id = Guid.NewGuid();
-            CreatedAt = DateTime.UtcNow;
-        }
-
-        protected BaseEntity(Guid id, DateTime createdAt, DateTime? updatedAt)
-        {
-            Id = id;
-            CreatedAt = createdAt;
-            UpdatedAt = updatedAt;
-        }
-
-        protected void MarkUpdated()
-        {
-            UpdatedAt = DateTime.UtcNow;
-        }
+        /// <summary>
+        /// Khóa chính BIGINT IDENTITY. Bằng 0 cho đến khi entity được
+        /// SaveChanges lần đầu (EF Core sẽ gán giá trị thật từ database).
+        /// </summary>
+        public long Id { get; protected set; }
+       
     }
 }

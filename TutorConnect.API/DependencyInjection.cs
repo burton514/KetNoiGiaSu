@@ -12,6 +12,7 @@ namespace TutorConnect.API
                 options.Filters.Add<ApiResponseWrapperFilter>();
             });
 
+            services.AddHttpContextAccessor();
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
             services.AddAuthorization();
