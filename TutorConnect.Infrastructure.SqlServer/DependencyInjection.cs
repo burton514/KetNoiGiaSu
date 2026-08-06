@@ -32,7 +32,7 @@ namespace TutorConnect.Infrastructure.SqlServer
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
             services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
-
+            services.AddScoped<IBookingRepository, BookingRepository>();
             return services;
         }
     }

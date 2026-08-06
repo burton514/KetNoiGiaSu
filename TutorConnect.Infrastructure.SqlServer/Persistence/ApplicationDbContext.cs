@@ -18,6 +18,10 @@ namespace TutorConnect.Infrastructure.SqlServer.Persistence
         public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
 
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+        // Thêm 3 dòng này dưới các DbSet hiện tại:
+        public DbSet<Booking> Bookings => Set<Booking>();
+        public DbSet<SessionProgress> SessionProgresses => Set<SessionProgress>();
+        public DbSet<Review> Reviews => Set<Review>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -25,4 +29,5 @@ namespace TutorConnect.Infrastructure.SqlServer.Persistence
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         }
     }
+
 }

@@ -1,7 +1,7 @@
 using System.Net;
-using TutorConnect.API.Models;
 using TutorConnect.Application.Common.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 
 namespace TutorConnect.API.Common
 {
@@ -19,18 +19,14 @@ namespace TutorConnect.API.Common
             Exception exception,
             CancellationToken cancellationToken)
         {
-            var (statusCode, messages) = exception switch
+            var (statusCode, title) = exception switch
             {
-                NotFoundException =>
-                    (HttpStatusCode.NotFound, new[] { exception.Message }),
-                ArgumentException =>
-                    (HttpStatusCode.BadRequest, new[] { exception.Message }),
-                _ =>
-                    (HttpStatusCode.InternalServerError,
-                        new[] { "An unexpected error occurred." })
+                NotFoundException => (StatusCodes.Status404NotFound, "Không tìm thấy dữ liệu"),
+                ArgumentException or ArgumentNullException or InvalidOperationException => (StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ"),
+                _ => (StatusCodes.Status500InternalServerError, "Lỗi hệ thống máy chủ")
             };
 
-            if (statusCode == HttpStatusCode.InternalServerError)
+            if (statusCode == StatusCodes.Status500InternalServerError)
             {
                 _logger.LogError(
                     exception,
@@ -38,10 +34,16 @@ namespace TutorConnect.API.Common
                     httpContext.Request.Path);
             }
 
-            httpContext.Response.StatusCode = (int)statusCode;
-            await httpContext.Response.WriteAsJsonAsync(
-                ApiResponse.Fail(statusCode, messages),
-                cancellationToken);
+            httpContext.Response.StatusCode = statusCode;
+
+            var problemDetails = new ProblemDetails
+            {
+                Status = statusCode,
+                Title = title,
+                Detail = exception.Message
+            };
+
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
             return true;
         }
