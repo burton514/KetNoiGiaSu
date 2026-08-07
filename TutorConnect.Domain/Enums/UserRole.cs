@@ -10,8 +10,8 @@ namespace TutorConnect.Domain.Enums
     /// </summary>
     public enum UserRole
     {
-        Admin,
-        Tutor,
-        Student
+        Admin = 1,
+        Tutor = 2,
+        Student = 3
     }
 }
