@@ -16,7 +16,7 @@ namespace TutorConnect.API.Common
         {
             switch (context.Result)
             {
-                case ObjectResult { Value: ApiResponse }:
+                case ObjectResult objectResult when IsApiResponse(objectResult.Value):
                     break;
 
                 case ObjectResult objectResult:
@@ -45,26 +45,43 @@ namespace TutorConnect.API.Common
             await next();
         }
 
-        private static ApiResponse Build(object? value, int statusCode)
+        private static ApiResponse<object?> Build(object? value, int statusCode)
         {
-            return statusCode is >= 200 and < 300
-                ? ApiResponse.Success(value, (HttpStatusCode)statusCode)
-                : ApiResponse.Fail(
-                    (HttpStatusCode)statusCode,
-                    ExtractMessages(value, statusCode));
+            var isSuccess = statusCode is >= 200 and < 300;
+
+            return new ApiResponse<object?>
+            {
+                Message = isSuccess
+                    ? DefaultMessage(statusCode)
+                    : ExtractMessage(value, statusCode),
+                Data = isSuccess ? value : null,
+                Code = statusCode
+            };
         }
 
-        private static string[] ExtractMessages(object? value, int statusCode)
+        private static bool IsApiResponse(object? value)
+        {
+            if (value is null)
+            {
+                return false;
+            }
+
+            var type = value.GetType();
+            return type.IsGenericType &&
+                   type.GetGenericTypeDefinition() == typeof(ApiResponse<>);
+        }
+
+        private static string ExtractMessage(object? value, int statusCode)
         {
             return value switch
             {
                 ValidationProblemDetails validationProblem =>
-                    validationProblem.Errors.SelectMany(entry => entry.Value).ToArray(),
+                    string.Join("; ", validationProblem.Errors.SelectMany(entry => entry.Value)),
                 ProblemDetails problem =>
-                    new[] { problem.Detail ?? problem.Title ?? DefaultMessage(statusCode) },
-                string message => new[] { message },
-                null => new[] { DefaultMessage(statusCode) },
-                _ => new[] { value.ToString() ?? DefaultMessage(statusCode) }
+                    problem.Detail ?? problem.Title ?? DefaultMessage(statusCode),
+                string message => message,
+                null => DefaultMessage(statusCode),
+                _ => value.ToString() ?? DefaultMessage(statusCode)
             };
         }
 
