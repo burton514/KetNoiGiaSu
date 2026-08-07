@@ -79,8 +79,6 @@ namespace TutorConnect.Domain.Entities
         /// <summary>
         /// Token chỉ hợp lệ khi chưa hết hạn và RevokedAtUtc là NULL
         /// </summary>
-        public bool IsActive => IsActive(DateTime.UtcNow);
-
         public bool IsActive(DateTime utcNow)
         {
             return RevokedAtUtc is null && ExpiresAtUtc > utcNow;
