@@ -30,10 +30,17 @@ namespace TutorConnect.Domain.Entities
             // Dành cho EF Core.
         }
 
-        private RefreshToken(long userId, string tokenHash, DateTime expiresAtUtc)
+        public RefreshToken(long userId, string tokenHash, DateTime expiresAtUtc)
         {
+            DomainGuard.Positive(userId, nameof(userId));
             UserId = userId;
-            TokenHash = tokenHash;
+            TokenHash = DomainGuard.Required(tokenHash, nameof(tokenHash), 64);
+
+            if (TokenHash.Length != 64)
+            {
+                throw new ArgumentException("TokenHash must contain exactly 64 characters.", nameof(tokenHash));
+            }
+
             ExpiresAtUtc = expiresAtUtc;
         }
 
@@ -72,7 +79,12 @@ namespace TutorConnect.Domain.Entities
         /// <summary>
         /// Token chỉ hợp lệ khi chưa hết hạn và RevokedAtUtc là NULL
         /// </summary>
-        public bool IsActive => RevokedAtUtc is null && ExpiresAtUtc > DateTime.UtcNow;
+        public bool IsActive => IsActive(DateTime.UtcNow);
+
+        public bool IsActive(DateTime utcNow)
+        {
+            return RevokedAtUtc is null && ExpiresAtUtc > utcNow;
+        }
 
         public bool IsExpired => ExpiresAtUtc <= DateTime.UtcNow;
 
@@ -80,7 +92,15 @@ namespace TutorConnect.Domain.Entities
 
         public void Revoke()
         {
-            RevokedAtUtc ??= DateTime.UtcNow;
+            Revoke(DateTime.UtcNow);
+        }
+
+        public void Revoke(DateTime revokedAtUtc)
+        {
+            if (RevokedAtUtc is null)
+            {
+                RevokedAtUtc = revokedAtUtc;
+            }
         }
     }
 }

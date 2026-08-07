@@ -43,6 +43,17 @@ namespace TutorConnect.Domain.Entities
         public string TimeZoneId { get; private set; } = null!;
 
         public ICollection<RefreshToken> RefreshTokens { get; private set; } = new List<RefreshToken>();
+        public TutorProfile? TutorProfile { get; private set; }
+        public ICollection<TutorProfile> ReviewedTutorProfiles { get; private set; } = new List<TutorProfile>();
+        public ICollection<Booking> StudentBookings { get; private set; } = new List<Booking>();
+        public ICollection<Booking> CancelledBookings { get; private set; } = new List<Booking>();
+        public ICollection<RescheduleRequest> RequestedRescheduleRequests { get; private set; } = new List<RescheduleRequest>();
+        public ICollection<RescheduleRequest> RespondedRescheduleRequests { get; private set; } = new List<RescheduleRequest>();
+        public ICollection<LearningGoal> LearningGoals { get; private set; } = new List<LearningGoal>();
+        public ICollection<Review> Reviews { get; private set; } = new List<Review>();
+        public ICollection<Complaint> CreatedComplaints { get; private set; } = new List<Complaint>();
+        public ICollection<Complaint> ComplaintsAgainstUser { get; private set; } = new List<Complaint>();
+        public ICollection<Complaint> ResolvedComplaints { get; private set; } = new List<Complaint>();
 
         private User()
         {
@@ -66,6 +77,26 @@ namespace TutorConnect.Domain.Entities
             TimeZoneId = timeZoneId;
         }
 
+        public User(
+            string email,
+            string passwordHash,
+            string fullName,
+            UserRole role,
+            string timeZoneId,
+            string? phone = null,
+            UserStatus status = UserStatus.Active)
+        {
+            Email = DomainGuard.Email(email, nameof(email));
+            PasswordHash = DomainGuard.Required(passwordHash, nameof(passwordHash), 500);
+            FullName = DomainGuard.Required(fullName, nameof(fullName), 150);
+            Phone = DomainGuard.Optional(phone, nameof(phone), 30);
+            DomainGuard.DefinedEnum(role, nameof(role));
+            DomainGuard.DefinedEnum(status, nameof(status));
+            Role = role;
+            Status = status;
+            TimeZoneId = DomainGuard.Required(timeZoneId, nameof(timeZoneId), 100);
+        }
+
         /// <summary>
         /// Tạo tài khoản mới. PasswordHash phải được băm sẵn ở Application layer
         /// (qua IPasswordHasher) trước khi truyền vào đây - Domain không tự hash.
@@ -78,33 +109,15 @@ namespace TutorConnect.Domain.Entities
             string timeZoneId,
             string? phone = null)
         {
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                throw new ArgumentException("Email không được để trống.", nameof(email));
-            }
-
-            if (string.IsNullOrWhiteSpace(passwordHash))
-            {
-                throw new ArgumentException("PasswordHash không được để trống.", nameof(passwordHash));
-            }
-
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                throw new ArgumentException("FullName không được để trống.", nameof(fullName));
-            }
-
-            if (string.IsNullOrWhiteSpace(timeZoneId))
-            {
-                throw new ArgumentException("TimeZoneId không được để trống.", nameof(timeZoneId));
-            }
+            DomainGuard.DefinedEnum(role, nameof(role));
 
             return new User(
-                email: email.Trim().ToLowerInvariant(),
-                passwordHash: passwordHash,
-                fullName: fullName.Trim(),
-                phone: string.IsNullOrWhiteSpace(phone) ? null : phone.Trim(),
+                email: DomainGuard.Email(email, nameof(email)),
+                passwordHash: DomainGuard.Required(passwordHash, nameof(passwordHash), 500),
+                fullName: DomainGuard.Required(fullName, nameof(fullName), 150),
+                phone: DomainGuard.Optional(phone, nameof(phone), 30),
                 role: role,
-                timeZoneId: timeZoneId.Trim());
+                timeZoneId: DomainGuard.Required(timeZoneId, nameof(timeZoneId), 100));
         }
 
         /// <summary>
@@ -116,12 +129,12 @@ namespace TutorConnect.Domain.Entities
 
         public void ChangePassword(string newPasswordHash)
         {
-            if (string.IsNullOrWhiteSpace(newPasswordHash))
-            {
-                throw new ArgumentException("PasswordHash không được để trống.", nameof(newPasswordHash));
-            }
+            PasswordHash = DomainGuard.Required(newPasswordHash, nameof(newPasswordHash), 500);
+        }
 
-            PasswordHash = newPasswordHash;
+        public void ChangePasswordHash(string passwordHash)
+        {
+            PasswordHash = DomainGuard.Required(passwordHash, nameof(passwordHash), 500);
         }
 
         /// <summary>
@@ -139,19 +152,9 @@ namespace TutorConnect.Domain.Entities
 
         public void UpdateProfile(string fullName, string? phone, string timeZoneId)
         {
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                throw new ArgumentException("FullName không được để trống.", nameof(fullName));
-            }
-
-            if (string.IsNullOrWhiteSpace(timeZoneId))
-            {
-                throw new ArgumentException("TimeZoneId không được để trống.", nameof(timeZoneId));
-            }
-
-            FullName = fullName.Trim();
-            Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
-            TimeZoneId = timeZoneId.Trim();
+            FullName = DomainGuard.Required(fullName, nameof(fullName), 150);
+            Phone = DomainGuard.Optional(phone, nameof(phone), 30);
+            TimeZoneId = DomainGuard.Required(timeZoneId, nameof(timeZoneId), 100);
         }
 
         public void Lock() => Status = UserStatus.Locked;

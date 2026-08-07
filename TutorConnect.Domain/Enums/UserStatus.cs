@@ -10,8 +10,8 @@ namespace TutorConnect.Domain.Enums
     /// </summary>
     public enum UserStatus
     {
-        Active,
-        Locked,
-        Inactive
+        Active = 1,
+        Locked = 2,
+        Inactive = 3
     }
 }
