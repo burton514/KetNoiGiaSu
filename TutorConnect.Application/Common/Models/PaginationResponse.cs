@@ -13,19 +13,13 @@ namespace TutorConnect.Application.Common.Models
         [JsonPropertyName("pageSize")]
         public int PageSize { get; set; }
 
-        [JsonPropertyName("totalCount")]
-        public int TotalCount { get; set; }
+        [JsonPropertyName("totalItems")]
+        public long TotalItems { get; set; }
 
         [JsonPropertyName("totalPages")]
         public int TotalPages => PageSize <= 0
             ? 0
-            : (int)Math.Ceiling(TotalCount / (double)PageSize);
-
-        [JsonPropertyName("hasPrevious")]
-        public bool HasPrevious => PageNumber > 1;
-
-        [JsonPropertyName("hasNext")]
-        public bool HasNext => PageNumber < TotalPages;
+            : (int)Math.Ceiling(TotalItems / (double)PageSize);
 
         public PaginationResponse()
         {
@@ -33,12 +27,12 @@ namespace TutorConnect.Application.Common.Models
 
         public PaginationResponse(
             IReadOnlyList<T> items,
-            int totalCount,
+            long totalItems,
             int pageNumber,
             int pageSize)
         {
             Items = items;
-            TotalCount = totalCount;
+            TotalItems = totalItems;
             PageNumber = pageNumber;
             PageSize = pageSize;
         }

@@ -10,6 +10,6 @@ namespace TutorConnect.API.Models
         public int PageNumber { get; set; } = 1;
 
         [Range(1, MaxPageSize, ErrorMessage = "PageSize must be between 1 and 100.")]
-        public int PageSize { get; set; } = 10;
+        public int PageSize { get; set; } = 20;
     }
 }
