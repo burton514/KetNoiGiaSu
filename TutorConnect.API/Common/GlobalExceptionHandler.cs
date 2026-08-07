@@ -20,39 +20,38 @@ namespace TutorConnect.API.Common
             Exception exception,
             CancellationToken cancellationToken)
         {
-       
-            var (statusCode, messages) = exception switch
+            var (statusCode, message) = exception switch
             {
                 NotFoundException =>
-                    (HttpStatusCode.NotFound, new[] { exception.Message }),
+                    (HttpStatusCode.NotFound, exception.Message),
 
                 // Sai mật khẩu / chưa đăng nhập hợp lệ / token hết hạn -> 401
                 InvalidCredentialsException =>
-                    (HttpStatusCode.Unauthorized, new[] { exception.Message }),
+                    (HttpStatusCode.Unauthorized, exception.Message),
                 InvalidTokenException =>
-                    (HttpStatusCode.Unauthorized, new[] { exception.Message }),
+                    (HttpStatusCode.Unauthorized, exception.Message),
                 UnauthorizedException =>
-                    (HttpStatusCode.Unauthorized, new[] { exception.Message }),
+                    (HttpStatusCode.Unauthorized, exception.Message),
 
                 // Email trùng / tài nguyên đã tồn tại -> 409
                 UserAlreadyExistsException =>
-                    (HttpStatusCode.Conflict, new[] { exception.Message }),
+                    (HttpStatusCode.Conflict, exception.Message),
 
                 // FluentValidation: gom toàn bộ message lỗi -> 400
                 ValidationException validationException =>
                     (HttpStatusCode.BadRequest,
-                        validationException.Errors.Select(e => e.ErrorMessage).ToArray()),
+                        string.Join("; ", validationException.Errors.Select(e => e.ErrorMessage))),
 
                 // Lỗi logic nghiệp vụ (vd: email đã xác minh rồi) -> 400
                 InvalidOperationException =>
-                    (HttpStatusCode.BadRequest, new[] { exception.Message }),
+                    (HttpStatusCode.BadRequest, exception.Message),
 
                 ArgumentException =>
-                    (HttpStatusCode.BadRequest, new[] { exception.Message }),
+                    (HttpStatusCode.BadRequest, exception.Message),
 
                 _ =>
                     (HttpStatusCode.InternalServerError,
-                        new[] { "An unexpected error occurred." })
+                        "An unexpected error occurred.")
             };
 
             if (statusCode == HttpStatusCode.InternalServerError)
@@ -65,7 +64,12 @@ namespace TutorConnect.API.Common
 
             httpContext.Response.StatusCode = (int)statusCode;
             await httpContext.Response.WriteAsJsonAsync(
-                ApiResponse.Fail(statusCode, messages),
+                new ApiResponse<object?>
+                {
+                    Message = message,
+                    Data = null,
+                    Code = (int)statusCode
+                },
                 cancellationToken);
 
             return true;
