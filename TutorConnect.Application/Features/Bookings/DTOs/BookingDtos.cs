@@ -41,4 +41,20 @@ namespace TutorConnect.Application.Features.Bookings.DTOs
         long? CancelledByUserId,
         UserReputationSummaryResponse? StudentReputation,
         UserReputationSummaryResponse? TutorReputation);
+
+    public record BookingMinimal(
+        long Id,
+        long StudentId,
+        long TutorSubjectId,
+        DateTime StartTimeUtc,
+        DateTime EndTimeUtc,
+        int CreditCost,
+        BookingStatus Status,
+        string? MeetingUrl
+    );
+
+    public record CompleteBookingResult(
+        BookingMinimal Booking,
+        TutorConnect.Application.Features.Progress.DTOs.SessionProgressResponse Progress
+    );
 }
