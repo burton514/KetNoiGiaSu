@@ -26,12 +26,15 @@ namespace TutorConnect.Infrastructure.SqlServer
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IEmailVerificationTokenService, EmailVerificationTokenService>();
+            // Register application services
+            services.AddScoped<TutorConnect.Application.Services.ISessionService, SessionService>();
 
             // Register repositories
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
             services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+            services.AddScoped<ISessionProgressRepository, SessionProgressRepository>();
 
             return services;
         }
