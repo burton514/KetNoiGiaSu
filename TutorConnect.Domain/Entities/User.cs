@@ -132,10 +132,7 @@ namespace TutorConnect.Domain.Entities
             PasswordHash = DomainGuard.Required(newPasswordHash, nameof(newPasswordHash), 500);
         }
 
-        public void ChangePasswordHash(string passwordHash)
-        {
-            PasswordHash = DomainGuard.Required(passwordHash, nameof(passwordHash), 500);
-        }
+        
 
         /// <summary>
         /// Cập nhật mật khẩu và vô hiệu hóa tất cả các refresh token hiện tại (buộc đăng nhập lại).
