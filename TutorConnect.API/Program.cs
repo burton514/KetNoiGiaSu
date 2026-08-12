@@ -30,6 +30,8 @@ builder.Services
         };
     });
 
+builder.Services.AddAuthorization();
+
 builder.Services.AddPresentation(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureSqlServer(builder.Configuration);
