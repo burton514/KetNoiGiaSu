@@ -28,6 +28,7 @@ namespace TutorConnect.Infrastructure.SqlServer
             services.AddScoped<IEmailVerificationTokenService, EmailVerificationTokenService>();
             // Register application services
             services.AddScoped<TutorConnect.Application.Services.ISessionService, SessionService>();
+            services.AddScoped<TutorConnect.Application.Services.IBookingService, BookingService>();
 
             // Register repositories
             services.AddScoped<IUserRepository, UserRepository>();

@@ -10,10 +10,29 @@ namespace TutorConnect.API.Controllers
     public class BookingsController : ControllerBase
     {
         private readonly ISessionService _sessionService;
+        private readonly IBookingService _bookingService;
 
-        public BookingsController(ISessionService sessionService)
+        public BookingsController(ISessionService sessionService, IBookingService bookingService)
         {
             _sessionService = sessionService;
+            _bookingService = bookingService;
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Student")]
+        public async Task<ActionResult<object>> CreateBooking([FromBody] TutorConnect.Application.Features.Bookings.DTOs.BookingCreateRequest request, CancellationToken cancellationToken)
+        {
+            // Extract student id from claims (assume claim "sub" or nameidentifier)
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out var studentId))
+            {
+                return Forbid();
+            }
+
+            var result = await _bookingService.CreateBookingAsync(request, studentId, cancellationToken);
+            return Ok(result);
         }
 
         [HttpPost("{bookingId:long}/complete")]
