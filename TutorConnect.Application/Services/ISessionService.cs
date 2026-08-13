@@ -7,6 +7,10 @@ namespace TutorConnect.Application.Services
 {
     public interface ISessionService
     {
-        Task<CompleteBookingResult> CompleteBookingAsync(long bookingId, SessionProgressUpsertRequest request, CancellationToken cancellationToken = default);
+        Task<CompleteBookingResult> CompleteBookingAsync(
+            long bookingId,
+            long tutorId,
+            SessionProgressUpsertRequest request,
+            CancellationToken cancellationToken = default);
     }
 }

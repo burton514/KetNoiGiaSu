@@ -12,6 +12,8 @@ namespace TutorConnect.Domain.Interfaces
         /// </summary>
         string GenerateAccessToken(User user);
 
+        DateTime GetAccessTokenExpiryUtc();
+
         /// <summary>
         /// Sinh tạo refresh token.
         /// </summary>

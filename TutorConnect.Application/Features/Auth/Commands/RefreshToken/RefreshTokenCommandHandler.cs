@@ -69,7 +69,7 @@ namespace TutorConnect.Application.Features.Auth.Commands.RefreshToken
             return new RefreshTokenResponse(
                 AccessToken: newAccessToken,
                 RefreshToken: newRefreshToken,
-                ExpiresIn: DateTime.UtcNow.AddHours(1));
+                ExpiresIn: _jwtTokenService.GetAccessTokenExpiryUtc());
         }
     }
 }

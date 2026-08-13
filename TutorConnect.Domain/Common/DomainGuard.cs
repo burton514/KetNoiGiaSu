@@ -110,6 +110,15 @@ namespace TutorConnect.Domain.Common
             }
         }
 
+        public static void Period(TimeOnly startTime, TimeOnly endTime)
+        {
+            if (endTime <= startTime)
+            {
+                throw new ArgumentException(
+                    "End time must be later than start time. Overnight availability must be split into two weekly windows.");
+            }
+        }
+
         public static void Score(decimal? score, decimal? maxScore)
         {
             if (score is null && maxScore is null)

@@ -41,7 +41,10 @@ namespace TutorConnect.API.Controllers
         [Authorize(Roles = "Tutor")]
         public async Task<ActionResult<object>> CompleteBooking(long bookingId, [FromBody] SessionProgressUpsertRequest request, CancellationToken cancellationToken)
         {
-            var result = await _sessionService.CompleteBookingAsync(bookingId, request, cancellationToken);
+            var tutorId = GetCurrentUserId();
+            if (tutorId == 0) return Forbid();
+
+            var result = await _sessionService.CompleteBookingAsync(bookingId, tutorId, request, cancellationToken);
             return Ok(result);
         }
 

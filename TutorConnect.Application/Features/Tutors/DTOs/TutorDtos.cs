@@ -19,8 +19,6 @@ namespace TutorConnect.Application.Features.Tutors.DTOs
         int FeePerSessionCredits);
 
     public record TutorSubjectUpdateRequest(
-        long SubjectId,
-        string TeachingLevel,
         int FeePerSessionCredits);
 
     public record TutorSubjectStatusRequest(

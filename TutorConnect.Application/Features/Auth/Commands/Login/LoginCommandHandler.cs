@@ -68,7 +68,7 @@ namespace TutorConnect.Application.Features.Auth.Commands.Login
             return new LoginResponse(
                 AccessToken: accessToken,
                 RefreshToken: refreshToken,
-                ExpiresIn: DateTime.UtcNow.AddHours(1),
+                ExpiresIn: _jwtTokenService.GetAccessTokenExpiryUtc(),
                 Email: user.Email,
                 FullName: user.FullName,
                 Role: user.Role.ToString());

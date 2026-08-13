@@ -49,13 +49,14 @@ namespace TutorConnect.Application.Features.Auth.Commands.Register
                 role: request.Role,
                 timeZoneId: request.TimeZoneId);
 
+            if (request.Role == UserRole.Tutor)
+            {
+                user.InitializeTutorProfile();
+            }
+
             // Lưu vào database
             await _userRepository.AddAsync(user, cancellationToken);
             await _userRepository.SaveChangesAsync(cancellationToken);
-
-            // TODO(TutorProfile): Khi request.Role == UserRole.Tutor, cần khởi tạo
-            // TutorProfile ở trạng thái Draft. 
-
 
             // Gửi email xác minh
             var baseUrl = string.IsNullOrEmpty(request.BaseUrl)

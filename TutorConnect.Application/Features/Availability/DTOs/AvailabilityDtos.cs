@@ -1,18 +1,22 @@
 namespace TutorConnect.Application.Features.Availability.DTOs
 {
     public record AvailabilityCreateRequest(
-        DateTime StartTimeUtc,
-        DateTime EndTimeUtc);
+        DayOfWeek DayOfWeek,
+        TimeOnly StartTime,
+        TimeOnly EndTime);
 
     public record AvailabilityUpdateRequest(
-        DateTime StartTimeUtc,
-        DateTime EndTimeUtc);
+        DayOfWeek DayOfWeek,
+        TimeOnly StartTime,
+        TimeOnly EndTime);
 
     public record TutorAvailabilityResponse(
         long Id,
         long TutorId,
-        DateTime StartTimeUtc,
-        DateTime EndTimeUtc);
+        DayOfWeek DayOfWeek,
+        TimeOnly StartTime,
+        TimeOnly EndTime,
+        bool IsActive);
 
     public record AvailableWindowResponse(
         DateTime StartTimeUtc,

@@ -32,6 +32,11 @@ namespace TutorConnect.API.Common
                     (HttpStatusCode.Unauthorized, exception.Message),
                 UnauthorizedException =>
                     (HttpStatusCode.Unauthorized, exception.Message),
+                ForbiddenException =>
+                    (HttpStatusCode.Forbidden, exception.Message),
+
+                KeyNotFoundException =>
+                    (HttpStatusCode.NotFound, exception.Message),
 
                 // Email trùng / tài nguyên đã tồn tại -> 409
                 UserAlreadyExistsException =>

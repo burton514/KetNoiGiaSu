@@ -32,6 +32,21 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        if (!string.IsNullOrWhiteSpace(frontendBaseUrl))
+        {
+            policy.WithOrigins(frontendBaseUrl.TrimEnd('/'))
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    });
+});
+
 builder.Services.AddPresentation(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureSqlServer(builder.Configuration);
@@ -47,6 +62,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

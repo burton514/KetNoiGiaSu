@@ -1,4 +1,4 @@
-﻿using TutorConnect.Domain.Common;
+using TutorConnect.Domain.Common;
 using TutorConnect.Domain.Enums;
 
 namespace TutorConnect.Domain.Entities
@@ -120,11 +120,22 @@ namespace TutorConnect.Domain.Entities
                 timeZoneId: DomainGuard.Required(timeZoneId, nameof(timeZoneId), 100));
         }
 
-        /// <summary>
-        /// Tài khoản Locked không được đăng nhập hoặc thực hiện nghiệp vụ mới.
-        /// Việc email đã xác minh hay chưa được kiểm tra riêng qua <see cref="IsEmailVerified"/>,
-        /// không trộn vào Status để tránh lỗ hổng "xác minh email tự mở khóa tài khoản".
-        /// </summary>
+        public TutorProfile InitializeTutorProfile()
+        {
+            if (Role != UserRole.Tutor)
+            {
+                throw new InvalidOperationException("Only Tutor users can have a TutorProfile.");
+            }
+
+            if (TutorProfile is not null)
+            {
+                throw new InvalidOperationException("TutorProfile has already been initialized.");
+            }
+
+            TutorProfile = new TutorProfile(this);
+            return TutorProfile;
+        }
+
         public bool CanSignIn => Status == UserStatus.Active;
 
         public void ChangePassword(string newPasswordHash)
