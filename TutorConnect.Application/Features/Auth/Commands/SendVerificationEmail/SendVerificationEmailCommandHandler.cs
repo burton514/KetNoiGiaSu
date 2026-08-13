@@ -33,7 +33,7 @@ namespace TutorConnect.Application.Features.Auth.Commands.SendVerificationEmail
             await _emailVerificationTokenRepository.SaveChangesAsync(cancellationToken);
 
             // Sinh tạo verification link
-            var verificationLink = $"{request.BaseUrl}/api/auth/verify-email?token={Uri.EscapeDataString(token)}";
+            var verificationLink = $"{request.BaseUrl}/verify-email?token={Uri.EscapeDataString(token)}";
 
             // Gửi email
             await _emailService.SendVerificationEmailAsync(

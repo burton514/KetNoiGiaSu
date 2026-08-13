@@ -45,10 +45,15 @@ namespace TutorConnect.Infrastructure.SqlServer.Services
                 issuer: _issuer,
                 audience: _audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_accessTokenExpiryMinutes),
+                expires: GetAccessTokenExpiryUtc(),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public DateTime GetAccessTokenExpiryUtc()
+        {
+            return DateTime.UtcNow.AddMinutes(_accessTokenExpiryMinutes);
         }
 
         public string GenerateRefreshToken()

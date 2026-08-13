@@ -23,7 +23,31 @@ namespace TutorConnect.Application.Features.Auth.Commands.Register
                 .WithMessage("Không được phép tự đăng ký tài khoản Admin qua API công khai");
 
             RuleFor(x => x.TimeZoneId)
-                .NotEmpty().WithMessage("Múi giờ là bắt buộc");
+                .NotEmpty().WithMessage("Múi giờ là bắt buộc")
+                .Must(BeSupportedTimeZone)
+                .WithMessage("Múi giờ không được hệ thống hỗ trợ");
+        }
+
+        private static bool BeSupportedTimeZone(string timeZoneId)
+        {
+            if (string.IsNullOrWhiteSpace(timeZoneId))
+            {
+                return false;
+            }
+
+            try
+            {
+                _ = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId.Trim());
+                return true;
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return false;
+            }
+            catch (InvalidTimeZoneException)
+            {
+                return false;
+            }
         }
     }
 }

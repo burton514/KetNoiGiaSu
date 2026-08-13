@@ -10,6 +10,11 @@ namespace TutorConnect.Application.Common.Exceptions
         public UnauthorizedException(string message = "Unauthorized") : base(message) { }
     }
 
+    public class ForbiddenException : AuthenticationException
+    {
+        public ForbiddenException(string message = "Forbidden") : base(message) { }
+    }
+
     public class InvalidCredentialsException : AuthenticationException
     {
         public InvalidCredentialsException() : base("Email hoặc mật khẩu không đúng") { }

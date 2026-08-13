@@ -8,26 +8,43 @@ namespace TutorConnect.Domain.Entities
         {
         }
 
-        public TutorAvailability(long tutorId, DateTime startTimeUtc, DateTime endTimeUtc)
+        public TutorAvailability(
+            long tutorId,
+            DayOfWeek dayOfWeek,
+            TimeOnly startTime,
+            TimeOnly endTime)
         {
             DomainGuard.Positive(tutorId, nameof(tutorId));
-            DomainGuard.Period(startTimeUtc, endTimeUtc);
+            DomainGuard.DefinedEnum(dayOfWeek, nameof(dayOfWeek));
+            DomainGuard.Period(startTime, endTime);
+
             TutorId = tutorId;
-            StartTimeUtc = startTimeUtc;
-            EndTimeUtc = endTimeUtc;
+            DayOfWeek = dayOfWeek;
+            StartTime = startTime;
+            EndTime = endTime;
+            IsActive = true;
         }
 
         public long TutorId { get; private set; }
-        public DateTime StartTimeUtc { get; private set; }
-        public DateTime EndTimeUtc { get; private set; }
+        public DayOfWeek DayOfWeek { get; private set; }
+        public TimeOnly StartTime { get; private set; }
+        public TimeOnly EndTime { get; private set; }
+        public bool IsActive { get; private set; }
 
         public TutorProfile Tutor { get; private set; } = null!;
 
-        public void ChangePeriod(DateTime startTimeUtc, DateTime endTimeUtc)
+        public void ChangePeriod(DayOfWeek dayOfWeek, TimeOnly startTime, TimeOnly endTime)
         {
-            DomainGuard.Period(startTimeUtc, endTimeUtc);
-            StartTimeUtc = startTimeUtc;
-            EndTimeUtc = endTimeUtc;
+            DomainGuard.DefinedEnum(dayOfWeek, nameof(dayOfWeek));
+            DomainGuard.Period(startTime, endTime);
+
+            DayOfWeek = dayOfWeek;
+            StartTime = startTime;
+            EndTime = endTime;
         }
+
+        public void Activate() => IsActive = true;
+
+        public void Deactivate() => IsActive = false;
     }
 }

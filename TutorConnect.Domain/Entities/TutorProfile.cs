@@ -9,6 +9,15 @@ namespace TutorConnect.Domain.Entities
         {
         }
 
+        internal TutorProfile(User user, short experienceYears = 0)
+        {
+            User = user ?? throw new ArgumentNullException(nameof(user));
+            DomainGuard.InRange(experienceYears, 0, 80, nameof(experienceYears));
+            UserId = user.Id;
+            ExperienceYears = experienceYears;
+            ApprovalStatus = TutorApprovalStatus.Draft;
+        }
+
         public TutorProfile(long userId, short experienceYears = 0)
         {
             DomainGuard.Positive(userId, nameof(userId));
@@ -65,7 +74,7 @@ namespace TutorConnect.Domain.Entities
             ReviewedAtUtc = null;
         }
 
-        public void Approve(long adminId, DateTime reviewedAtUtc)
+        public void Approve(long adminId, DateTime reviewedAtUtc, string? reviewNote = null)
         {
             if (ApprovalStatus is not (TutorApprovalStatus.Pending or TutorApprovalStatus.Suspended))
             {
@@ -77,7 +86,7 @@ namespace TutorConnect.Domain.Entities
             DomainGuard.Positive(adminId, nameof(adminId));
 
             ApprovalStatus = TutorApprovalStatus.Approved;
-            ReviewNote = null;
+            ReviewNote = DomainGuard.Optional(reviewNote, nameof(reviewNote), 1000);
             ReviewedByAdminId = adminId;
             ReviewedAtUtc = reviewedAtUtc;
         }
