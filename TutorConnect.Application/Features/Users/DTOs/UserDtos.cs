@@ -26,6 +26,5 @@ namespace TutorConnect.Application.Features.Users.DTOs
         string TimeZoneId);
 
     public record UpdateUserStatusRequest(
-        UserStatus Status,
-        string? Reason);
+        UserStatus Status);
 }

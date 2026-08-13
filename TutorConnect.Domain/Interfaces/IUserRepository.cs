@@ -1,4 +1,5 @@
 using TutorConnect.Domain.Entities;
+using TutorConnect.Domain.Enums;
 
 namespace TutorConnect.Domain.Interfaces
 {
@@ -16,6 +17,15 @@ namespace TutorConnect.Domain.Interfaces
         Task UpdateAsync(User user, CancellationToken cancellationToken = default);
 
         Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default);
+
+        Task<(IReadOnlyList<User> Items, long TotalItems)> GetPagedAsync(
+           int pageNumber,
+           int pageSize,
+           UserRole? role,
+           UserStatus? status,
+           string? search,
+           CancellationToken cancellationToken = default);
+
 
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }
