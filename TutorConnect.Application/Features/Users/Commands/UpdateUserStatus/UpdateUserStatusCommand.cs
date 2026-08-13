@@ -13,8 +13,6 @@ namespace TutorConnect.Application.Features.Users.Commands.UpdateUserStatus
 
         public UserStatus Status { get; set; }
 
-        public string? Reason { get; set; }
-
         /// <summary>
         /// Id của Admin đang thực hiện thao tác - dùng để chặn việc tự khóa/tự vô hiệu hóa
         /// chính tài khoản đang đăng nhập.
@@ -27,7 +25,6 @@ namespace TutorConnect.Application.Features.Users.Commands.UpdateUserStatus
         {
             UserId = userId;
             Status = request.Status;
-            Reason = request.Reason;
             ActorUserId = actorUserId;
         }
     }

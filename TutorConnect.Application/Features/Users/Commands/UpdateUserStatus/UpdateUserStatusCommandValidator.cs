@@ -11,9 +11,6 @@ namespace TutorConnect.Application.Features.Users.Commands.UpdateUserStatus
 
             RuleFor(x => x.Status)
                 .IsInEnum();
-
-            RuleFor(x => x.Reason)
-                .MaximumLength(500);
         }
     }
 }
