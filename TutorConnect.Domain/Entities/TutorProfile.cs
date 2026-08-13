@@ -50,21 +50,54 @@ namespace TutorConnect.Domain.Entities
             string? verificationDocumentUrl)
         {
             DomainGuard.InRange(experienceYears, 0, 80, nameof(experienceYears));
-            Bio = DomainGuard.Optional(bio, nameof(bio), 1500);
-            Qualification = DomainGuard.Optional(qualification, nameof(qualification), 1000);
-            ExperienceYears = experienceYears;
-            VerificationDocumentUrl = DomainGuard.Optional(
+
+            var normalizedBio = DomainGuard.Optional(bio, nameof(bio), 1500);
+            var normalizedQualification = DomainGuard.Optional(qualification, nameof(qualification), 1000);
+            var normalizedVerificationDocumentUrl = DomainGuard.Optional(
                 verificationDocumentUrl,
                 nameof(verificationDocumentUrl),
                 1000);
+
+            var anyChange = Bio != normalizedBio
+                || Qualification != normalizedQualification
+                || ExperienceYears != experienceYears
+                || VerificationDocumentUrl != normalizedVerificationDocumentUrl;
+
+            var reviewSensitiveChange = Qualification != normalizedQualification
+                || ExperienceYears != experienceYears
+                || VerificationDocumentUrl != normalizedVerificationDocumentUrl;
+
+            Bio = normalizedBio;
+            Qualification = normalizedQualification;
+            ExperienceYears = experienceYears;
+            VerificationDocumentUrl = normalizedVerificationDocumentUrl;
+
+            if (reviewSensitiveChange
+                || (ApprovalStatus == TutorApprovalStatus.Rejected && anyChange))
+            {
+                RequireReapproval();
+            }
+        }
+
+        public void RequireReapproval()
+        {
+            if (ApprovalStatus is TutorApprovalStatus.Draft or TutorApprovalStatus.Suspended)
+            {
+                return;
+            }
+
+            ApprovalStatus = TutorApprovalStatus.Draft;
+            ReviewNote = null;
+            SubmittedAtUtc = null;
+            ReviewedByAdminId = null;
+            ReviewedAtUtc = null;
         }
 
         public void Submit(DateTime submittedAtUtc)
         {
-            if (ApprovalStatus is not (TutorApprovalStatus.Draft or TutorApprovalStatus.Rejected))
+            if (ApprovalStatus != TutorApprovalStatus.Draft)
             {
-                throw new InvalidOperationException(
-                    "Only a Draft or Rejected tutor profile can be submitted.");
+                throw new InvalidOperationException("Only a Draft tutor profile can be submitted.");
             }
 
             ApprovalStatus = TutorApprovalStatus.Pending;
