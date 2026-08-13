@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TutorConnect.Domain.Entities;
+using TutorConnect.Domain.Enums;
 using TutorConnect.Domain.Interfaces;
 using TutorConnect.Infrastructure.SqlServer.Persistence;
 
@@ -61,6 +62,45 @@ namespace TutorConnect.Infrastructure.SqlServer.Repositories
 
             _context.Users.Update(user);
             await Task.CompletedTask;
+        }
+
+        public async Task<(IReadOnlyList<User> Items, long TotalItems)> GetPagedAsync(
+           int pageNumber,
+           int pageSize,
+           UserRole? role,
+           UserStatus? status,
+           string? search,
+           CancellationToken cancellationToken = default)
+        {
+            var query = _context.Users.AsNoTracking().AsQueryable();
+
+            if (role.HasValue)
+            {
+                query = query.Where(u => u.Role == role.Value);
+            }
+
+            if (status.HasValue)
+            {
+                query = query.Where(u => u.Status == status.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var pattern = $"%{search.Trim()}%";
+                query = query.Where(u =>
+                    EF.Functions.Like(u.Email, pattern) ||
+                    EF.Functions.Like(u.FullName, pattern));
+            }
+
+            var totalItems = await query.LongCountAsync(cancellationToken);
+
+            var items = await query
+                .OrderByDescending(u => u.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalItems);
         }
 
         public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default)

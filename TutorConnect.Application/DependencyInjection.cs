@@ -14,6 +14,7 @@ namespace TutorConnect.Application
         {
             var assembly = Assembly.GetExecutingAssembly();
 
+            // Tim cac Handler trong TutorConnect.Application
             services.AddMediatR(configuration =>
                 configuration.RegisterServicesFromAssembly(assembly));
 
