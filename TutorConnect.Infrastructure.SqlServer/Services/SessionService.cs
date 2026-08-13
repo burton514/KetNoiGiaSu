@@ -43,7 +43,7 @@ namespace TutorConnect.Infrastructure.SqlServer.Services
                 throw new ForbiddenException("Only the Tutor assigned to this booking can complete it.");
             }
 
-            EnsureTutorCanOperate(booking.TutorSubject.Tutor);
+            EnsureTutorCanFulfillExistingBooking(booking.TutorSubject.Tutor);
 
             if (booking.Status != BookingStatus.Confirmed)
             {
@@ -110,13 +110,13 @@ namespace TutorConnect.Infrastructure.SqlServer.Services
                     progress.TutorComment));
         }
 
-        private static void EnsureTutorCanOperate(TutorProfile tutorProfile)
+        private static void EnsureTutorCanFulfillExistingBooking(TutorProfile tutorProfile)
         {
             if (tutorProfile.User.Role != UserRole.Tutor
                 || tutorProfile.User.Status != UserStatus.Active
-                || tutorProfile.ApprovalStatus != TutorApprovalStatus.Approved)
+                || tutorProfile.ApprovalStatus == TutorApprovalStatus.Suspended)
             {
-                throw new ForbiddenException("Tutor must be active and approved to perform this action.");
+                throw new ForbiddenException("Tutor cannot perform this action for the existing booking.");
             }
         }
     }

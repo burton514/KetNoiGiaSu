@@ -2,6 +2,12 @@ using TutorConnect.Application.Features.Availability.DTOs;
 
 namespace TutorConnect.Application.Features.Matching.DTOs
 {
+    public record TutorSearchRequest(
+        long SubjectId,
+        string TeachingLevel,
+        DateTime StartTimeUtc,
+        DateTime EndTimeUtc);
+
     public record TutorSearchItemResponse(
         long TutorId,
         string FullName,

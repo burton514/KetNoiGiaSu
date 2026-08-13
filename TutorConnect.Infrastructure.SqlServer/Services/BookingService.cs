@@ -144,7 +144,7 @@ namespace TutorConnect.Infrastructure.SqlServer.Services
 
             EnsureBookingCanBeRescheduled(booking);
             EnsureBookingParty(booking, userId);
-            EnsureTutorCanOperate(booking.TutorSubject.Tutor);
+            EnsureTutorCanManageExistingBooking(booking.TutorSubject.Tutor);
             EnsureMinimumNotice(booking.StartTimeUtc);
 
             var hasPendingRequest = await _dbContext.RescheduleRequests
@@ -242,12 +242,12 @@ namespace TutorConnect.Infrastructure.SqlServer.Services
 
             if (userId == booking.TutorSubject.TutorId)
             {
-                EnsureTutorCanOperate(booking.TutorSubject.Tutor);
+                EnsureTutorCanManageExistingBooking(booking.TutorSubject.Tutor);
             }
 
             if (request.IsApproved)
             {
-                EnsureTutorCanOperate(booking.TutorSubject.Tutor);
+                EnsureTutorCanManageExistingBooking(booking.TutorSubject.Tutor);
                 EnsureMinimumNotice(booking.StartTimeUtc);
                 EnsureFuturePeriod(proposal.ProposedStartTimeUtc, proposal.ProposedEndTimeUtc);
 
@@ -358,13 +358,13 @@ namespace TutorConnect.Infrastructure.SqlServer.Services
             }
         }
 
-        private static void EnsureTutorCanOperate(TutorProfile tutorProfile)
+        private static void EnsureTutorCanManageExistingBooking(TutorProfile tutorProfile)
         {
             if (tutorProfile.User.Role != UserRole.Tutor
                 || tutorProfile.User.Status != UserStatus.Active
-                || tutorProfile.ApprovalStatus != TutorApprovalStatus.Approved)
+                || tutorProfile.ApprovalStatus == TutorApprovalStatus.Suspended)
             {
-                throw new ForbiddenException("Tutor must be active and approved to perform this action.");
+                throw new ForbiddenException("Tutor cannot manage this existing booking.");
             }
         }
 
