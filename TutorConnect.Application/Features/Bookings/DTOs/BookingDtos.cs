@@ -1,7 +1,6 @@
-using TutorConnect.Application.Features.Reviews.DTOs;
-using TutorConnect.Application.Features.Subjects.DTOs;
-using TutorConnect.Application.Features.Users.DTOs;
+using System;
 using TutorConnect.Domain.Enums;
+using TutorConnect.Application.Features.Progress.DTOs;
 
 namespace TutorConnect.Application.Features.Bookings.DTOs
 {
@@ -9,38 +8,20 @@ namespace TutorConnect.Application.Features.Bookings.DTOs
         long TutorSubjectId,
         DateTime StartTimeUtc,
         DateTime EndTimeUtc,
-        string? StudentNote);
-
-    public record ReasonRequest(
-        string Reason);
-
-    public record MeetingLinkRequest(
-        string MeetingUrl);
-
-    public record CompleteBookingRequest(
-        long LearningGoalId,
-        double? Score,
-        double? MaxScore,
-        double GoalProgressPercent,
-        string TutorComment);
+        int CreditCost,
+        string? StudentNote
+    );
 
     public record BookingResponse(
         long Id,
-        UserLiteResponse Student,
-        UserLiteResponse Tutor,
-        long? TutorSubjectId,
-        SubjectResponse Subject,
-        string TeachingLevel,
+        long StudentId,
+        long TutorSubjectId,
         DateTime StartTimeUtc,
         DateTime EndTimeUtc,
         int CreditCost,
         BookingStatus Status,
-        string? StudentNote,
-        string? MeetingUrl,
-        string? StatusReason,
-        long? CancelledByUserId,
-        UserReputationSummaryResponse? StudentReputation,
-        UserReputationSummaryResponse? TutorReputation);
+        string? StudentNote
+    );
 
     public record BookingMinimal(
         long Id,
@@ -55,6 +36,6 @@ namespace TutorConnect.Application.Features.Bookings.DTOs
 
     public record CompleteBookingResult(
         BookingMinimal Booking,
-        TutorConnect.Application.Features.Progress.DTOs.SessionProgressResponse Progress
+        SessionProgressResponse Progress
     );
 }

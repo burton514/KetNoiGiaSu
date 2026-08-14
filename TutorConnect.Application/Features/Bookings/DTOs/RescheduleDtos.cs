@@ -1,25 +1,36 @@
-﻿using System;
+﻿using TutorConnect.Domain.Enums;
 
 namespace TutorConnect.Application.Features.Bookings.DTOs
 {
     public record RescheduleCreateRequest(
-        DateTime NewStartTimeUtc,
-        DateTime NewEndTimeUtc,
+        DateTime ProposedStartTimeUtc,
+        DateTime ProposedEndTimeUtc,
         string? Reason
     );
 
     public record RescheduleStatusUpdateRequest(
-        bool IsApproved,
-        string? Note
+        RescheduleStatusAction Status,
+        string? ResponseNote
     );
 
-    public record RescheduleProposalDto(
+    public enum RescheduleStatusAction
+    {
+        Approve = 1,
+        Reject = 2
+    }
+
+    public record RescheduleResponse(
         long Id,
         long BookingId,
         long RequestedByUserId,
-        DateTime NewStartTimeUtc,
-        DateTime NewEndTimeUtc,
+        DateTime OriginalStartTimeUtc,
+        DateTime OriginalEndTimeUtc,
+        DateTime ProposedStartTimeUtc,
+        DateTime ProposedEndTimeUtc,
+        string? Reason,
         string Status,
-        string? Reason
+        long? RespondedByUserId,
+        string? ResponseNote,
+        DateTime RequestedAtUtc
     );
 }

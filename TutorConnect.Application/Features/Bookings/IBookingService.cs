@@ -1,6 +1,6 @@
-using TutorConnect.Application.Features.Bookings.DTOs;
+﻿using TutorConnect.Application.Features.Bookings.DTOs;
 
-namespace TutorConnect.Application.Services
+namespace TutorConnect.Application.Features.Bookings
 {
     public interface IBookingService
     {
@@ -9,11 +9,6 @@ namespace TutorConnect.Application.Services
             DateTime startTimeUtc,
             DateTime endTimeUtc,
             long? excludeBookingId = null,
-            CancellationToken cancellationToken = default);
-
-        Task<object> CreateBookingAsync(
-            BookingCreateRequest request,
-            long studentId,
             CancellationToken cancellationToken = default);
 
         Task<RescheduleResponse> CreateRescheduleRequestAsync(
