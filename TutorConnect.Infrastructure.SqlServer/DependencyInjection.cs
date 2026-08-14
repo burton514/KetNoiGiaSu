@@ -33,6 +33,7 @@ namespace TutorConnect.Infrastructure.SqlServer
             services.AddScoped<TutorConnect.Application.Services.ITutorService, TutorService>();
             services.AddScoped<TutorConnect.Application.Services.ISubjectService, SubjectService>();
             services.AddScoped<TutorConnect.Application.Services.IMatchingService, MatchingService>();
+            services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
             // Register repositories
             services.AddScoped<IUserRepository, UserRepository>();
@@ -40,8 +41,9 @@ namespace TutorConnect.Infrastructure.SqlServer
             services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
             services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
             services.AddScoped<ISessionProgressRepository, SessionProgressRepository>();
+            services.AddScoped<IComplaintRepository, ComplaintRepository>();
             services.AddScoped<IDashboardRepository, DashboardRepository>();
-
+     
             return services;
         }
     }

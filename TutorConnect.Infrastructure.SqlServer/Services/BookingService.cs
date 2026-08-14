@@ -1,432 +1,214 @@
-using System.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using TutorConnect.Application.Common.Exceptions;
-using TutorConnect.Application.Features.Bookings.DTOs;
 using TutorConnect.Application.Services;
+using TutorConnect.Application.Features.Bookings.DTOs;
 using TutorConnect.Domain.Entities;
 using TutorConnect.Domain.Enums;
 using TutorConnect.Infrastructure.SqlServer.Persistence;
 
 namespace TutorConnect.Infrastructure.SqlServer.Services
 {
-    internal class BookingService : IBookingService
+    public class BookingService : IBookingService
     {
-        private readonly ApplicationDbContext _dbContext;
-        private readonly TimeSpan _minimumNotice;
+        private readonly ApplicationDbContext _context;
 
-        public BookingService(ApplicationDbContext dbContext, IConfiguration configuration)
+        public BookingService(ApplicationDbContext context)
         {
-            _dbContext = dbContext;
-
-            var configuredNotice = configuration["BookingRules:MinimumNoticeHours"];
-            _minimumNotice = int.TryParse(configuredNotice, out var noticeHours) && noticeHours > 0
-                ? TimeSpan.FromHours(noticeHours)
-                : TimeSpan.FromHours(12);
+            _context = context;
         }
 
-        private async Task<bool> HasScheduleConflictAsync(
-            long tutorId,
-            long studentId,
-            DateTime startTimeUtc,
-            DateTime endTimeUtc,
-            long? excludeBookingId = null,
-            CancellationToken cancellationToken = default)
-        {
-            return await _dbContext.Bookings
-                .AnyAsync(
-                    b => (excludeBookingId == null || b.Id != excludeBookingId)
-                        && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
-                        && (b.StudentId == studentId || b.TutorSubject.TutorId == tutorId)
-                        && startTimeUtc < b.EndTimeUtc
-                        && endTimeUtc > b.StartTimeUtc,
-                    cancellationToken);
-        }
-
-        public async Task<BookingMinimal> CreateBookingAsync(
+        /// <summary>
+        /// Tạo mới Lịch học (Có kiểm tra trùng lịch trước khi tạo)
+        /// </summary>
+        public async Task<object> CreateBookingAsync(
             BookingCreateRequest request,
             long studentId,
             CancellationToken cancellationToken = default)
         {
-            var startTimeUtc = NormalizeUtc(request.StartTimeUtc);
-            var endTimeUtc = NormalizeUtc(request.EndTimeUtc);
-            EnsureFuturePeriod(startTimeUtc, endTimeUtc);
-
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
-                cancellationToken);
-
-            var student = await _dbContext.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == studentId, cancellationToken);
-
-            if (student is null)
-            {
-                throw new NotFoundException("Student not found.");
-            }
-
-            if (student.Role != UserRole.Student || student.Status != UserStatus.Active)
-            {
-                throw new ForbiddenException("Only an active Student can create a booking.");
-            }
-
-            var tutorSubject = await _dbContext.TutorSubjects
-                .Include(ts => ts.Subject)
-                .Include(ts => ts.Tutor)
-                    .ThenInclude(t => t.User)
-                .FirstOrDefaultAsync(ts => ts.Id == request.TutorSubjectId, cancellationToken);
-
-            if (tutorSubject is null)
-            {
-                throw new NotFoundException("TutorSubject not found.");
-            }
-
-            EnsureTutorEligible(tutorSubject);
-
-            await EnsureWithinTutorAvailabilityAsync(
-                tutorSubject.TutorId,
-                tutorSubject.Tutor.User.TimeZoneId,
-                startTimeUtc,
-                endTimeUtc,
-                cancellationToken);
-
-            var hasConflict = await HasScheduleConflictAsync(
-                tutorSubject.TutorId,
+            // 1. Kiểm tra xem học viên hoặc gia sư có bị trùng lịch khung giờ này không
+            bool hasConflict = await HasScheduleConflictAsync(
                 studentId,
-                startTimeUtc,
-                endTimeUtc,
+                request.StartTimeUtc,
+                request.EndTimeUtc,
                 cancellationToken: cancellationToken);
 
             if (hasConflict)
             {
-                throw new InvalidOperationException("Booking time conflict.");
+                throw new InvalidOperationException("The requested time slot conflicts with an existing booking.");
             }
 
+            // 2. Khởi tạo Entity Booking
             var booking = new Booking(
-                studentId,
-                request.TutorSubjectId,
-                startTimeUtc,
-                endTimeUtc,
-                tutorSubject.FeePerSessionCredits,
-                request.StudentNote);
+                studentId: studentId,
+                tutorSubjectId: request.TutorSubjectId,
+                startTimeUtc: request.StartTimeUtc,
+                endTimeUtc: request.EndTimeUtc,
+                creditCost: request.CreditCost,
+                studentNote: request.StudentNote
+            );
 
-            await _dbContext.Bookings.AddAsync(booking, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            _context.Set<Booking>().Add(booking);
+            await _context.SaveChangesAsync(cancellationToken);
 
-            return ToMinimal(booking);
-        }
-
-        public async Task<RescheduleProposalDto> CreateRescheduleProposalAsync(
-            long bookingId,
-            long userId,
-            RescheduleCreateRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            var newStartTimeUtc = NormalizeUtc(request.NewStartTimeUtc);
-            var newEndTimeUtc = NormalizeUtc(request.NewEndTimeUtc);
-            EnsureFuturePeriod(newStartTimeUtc, newEndTimeUtc);
-
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
-                cancellationToken);
-
-            var booking = await _dbContext.Bookings
-                .Include(b => b.TutorSubject)
-                    .ThenInclude(ts => ts.Tutor)
-                        .ThenInclude(t => t.User)
-                .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
-
-            if (booking is null)
+            return new
             {
-                throw new NotFoundException("Booking not found.");
-            }
-
-            EnsureBookingCanBeRescheduled(booking);
-            EnsureBookingParty(booking, userId);
-            EnsureTutorCanManageExistingBooking(booking.TutorSubject.Tutor);
-            EnsureMinimumNotice(booking.StartTimeUtc);
-
-            var hasPendingRequest = await _dbContext.RescheduleRequests
-                .AnyAsync(
-                    r => r.BookingId == bookingId && r.Status == RescheduleRequestStatus.Pending,
-                    cancellationToken);
-
-            if (hasPendingRequest)
-            {
-                throw new InvalidOperationException("This booking already has a pending reschedule request.");
-            }
-
-            await EnsureWithinTutorAvailabilityAsync(
-                booking.TutorSubject.TutorId,
-                booking.TutorSubject.Tutor.User.TimeZoneId,
-                newStartTimeUtc,
-                newEndTimeUtc,
-                cancellationToken);
-
-            var hasConflict = await HasScheduleConflictAsync(
-                booking.TutorSubject.TutorId,
-                booking.StudentId,
-                newStartTimeUtc,
-                newEndTimeUtc,
-                booking.Id,
-                cancellationToken);
-
-            if (hasConflict)
-            {
-                throw new InvalidOperationException("Reschedule time conflict detected.");
-            }
-
-            var proposal = new RescheduleRequest(
-                booking.Id,
-                userId,
-                booking.StartTimeUtc,
-                booking.EndTimeUtc,
-                newStartTimeUtc,
-                newEndTimeUtc,
-                DateTime.UtcNow,
-                request.Reason);
-
-            await _dbContext.RescheduleRequests.AddAsync(proposal, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            return new RescheduleProposalDto(
-                proposal.Id,
-                proposal.BookingId,
-                proposal.RequestedByUserId,
-                proposal.ProposedStartTimeUtc,
-                proposal.ProposedEndTimeUtc,
-                proposal.Status.ToString(),
-                proposal.Reason);
-        }
-
-        public async Task<BookingMinimal> RespondToRescheduleProposalAsync(
-            long bookingId,
-            long proposalId,
-            long userId,
-            RescheduleStatusUpdateRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
-                cancellationToken);
-
-            var proposal = await _dbContext.RescheduleRequests
-                .Include(r => r.Booking)
-                    .ThenInclude(b => b.TutorSubject)
-                        .ThenInclude(ts => ts.Tutor)
-                            .ThenInclude(t => t.User)
-                .FirstOrDefaultAsync(
-                    r => r.Id == proposalId && r.BookingId == bookingId,
-                    cancellationToken);
-
-            if (proposal is null)
-            {
-                throw new NotFoundException("Reschedule request not found.");
-            }
-
-            var booking = proposal.Booking;
-            EnsureBookingCanBeRescheduled(booking);
-            EnsureBookingParty(booking, userId);
-
-            if (proposal.RequestedByUserId == userId)
-            {
-                throw new ForbiddenException("The requester cannot respond to their own reschedule request.");
-            }
-
-            if (proposal.Status != RescheduleRequestStatus.Pending)
-            {
-                throw new InvalidOperationException("Only a Pending reschedule request can be processed.");
-            }
-
-            if (userId == booking.TutorSubject.TutorId)
-            {
-                EnsureTutorCanManageExistingBooking(booking.TutorSubject.Tutor);
-            }
-
-            if (request.IsApproved)
-            {
-                EnsureTutorCanManageExistingBooking(booking.TutorSubject.Tutor);
-                EnsureMinimumNotice(booking.StartTimeUtc);
-                EnsureFuturePeriod(proposal.ProposedStartTimeUtc, proposal.ProposedEndTimeUtc);
-
-                await EnsureWithinTutorAvailabilityAsync(
-                    booking.TutorSubject.TutorId,
-                    booking.TutorSubject.Tutor.User.TimeZoneId,
-                    proposal.ProposedStartTimeUtc,
-                    proposal.ProposedEndTimeUtc,
-                    cancellationToken);
-
-                var hasConflict = await HasScheduleConflictAsync(
-                    booking.TutorSubject.TutorId,
-                    booking.StudentId,
-                    proposal.ProposedStartTimeUtc,
-                    proposal.ProposedEndTimeUtc,
-                    booking.Id,
-                    cancellationToken);
-
-                if (hasConflict)
-                {
-                    throw new InvalidOperationException("Reschedule time conflict detected.");
-                }
-
-                booking.ChangeSchedule(proposal.ProposedStartTimeUtc, proposal.ProposedEndTimeUtc);
-                proposal.Accept(userId, request.Note);
-            }
-            else
-            {
-                proposal.Reject(userId, request.Note);
-            }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            return ToMinimal(booking);
-        }
-
-        private async Task EnsureWithinTutorAvailabilityAsync(
-            long tutorId,
-            string timeZoneId,
-            DateTime startTimeUtc,
-            DateTime endTimeUtc,
-            CancellationToken cancellationToken)
-        {
-            startTimeUtc = NormalizeUtc(startTimeUtc);
-            endTimeUtc = NormalizeUtc(endTimeUtc);
-
-            TimeZoneInfo timeZone;
-            try
-            {
-                timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-                throw new InvalidOperationException($"Tutor time zone '{timeZoneId}' is not supported by the server.");
-            }
-            catch (InvalidTimeZoneException)
-            {
-                throw new InvalidOperationException($"Tutor time zone '{timeZoneId}' is invalid.");
-            }
-
-            var localStart = TimeZoneInfo.ConvertTimeFromUtc(startTimeUtc, timeZone);
-            var localEnd = TimeZoneInfo.ConvertTimeFromUtc(endTimeUtc, timeZone);
-
-            if (localStart.Date != localEnd.Date || localStart.DayOfWeek != localEnd.DayOfWeek)
-            {
-                throw new InvalidOperationException(
-                    "Booking must fit completely inside one active weekly tutor availability window.");
-            }
-
-            var localStartTime = TimeOnly.FromDateTime(localStart);
-            var localEndTime = TimeOnly.FromDateTime(localEnd);
-            var dayOfWeek = localStart.DayOfWeek;
-
-            var isAvailable = await _dbContext.TutorAvailabilities
-                .AnyAsync(
-                    a => a.TutorId == tutorId
-                        && a.IsActive
-                        && a.DayOfWeek == dayOfWeek
-                        && a.StartTime <= localStartTime
-                        && a.EndTime >= localEndTime,
-                    cancellationToken);
-
-            if (!isAvailable)
-            {
-                throw new InvalidOperationException(
-                    "Booking must fit completely inside an active tutor availability window.");
-            }
-        }
-
-        private static void EnsureTutorEligible(TutorSubject tutorSubject)
-        {
-            if (!tutorSubject.IsActive)
-            {
-                throw new InvalidOperationException("TutorSubject is inactive.");
-            }
-
-            if (!tutorSubject.Subject.IsActive)
-            {
-                throw new InvalidOperationException("Subject is inactive.");
-            }
-
-            if (tutorSubject.Tutor.User.Role != UserRole.Tutor
-                || tutorSubject.Tutor.User.Status != UserStatus.Active
-                || tutorSubject.Tutor.ApprovalStatus != TutorApprovalStatus.Approved)
-            {
-                throw new InvalidOperationException("Tutor is not approved and active.");
-            }
-        }
-
-        private static void EnsureTutorCanManageExistingBooking(TutorProfile tutorProfile)
-        {
-            if (tutorProfile.User.Role != UserRole.Tutor
-                || tutorProfile.User.Status != UserStatus.Active
-                || tutorProfile.ApprovalStatus == TutorApprovalStatus.Suspended)
-            {
-                throw new ForbiddenException("Tutor cannot manage this existing booking.");
-            }
-        }
-
-        private void EnsureMinimumNotice(DateTime bookingStartTimeUtc)
-        {
-            if (NormalizeUtc(bookingStartTimeUtc) - DateTime.UtcNow < _minimumNotice)
-            {
-                throw new InvalidOperationException(
-                    $"Cancellation or rescheduling requires at least {_minimumNotice.TotalHours:0} hours notice.");
-            }
-        }
-
-        private static void EnsureBookingCanBeRescheduled(Booking booking)
-        {
-            if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
-            {
-                throw new InvalidOperationException("Only Pending or Confirmed bookings can be rescheduled.");
-            }
-        }
-
-        private static void EnsureBookingParty(Booking booking, long userId)
-        {
-            if (booking.StudentId != userId && booking.TutorSubject.TutorId != userId)
-            {
-                throw new ForbiddenException("Only the Student or Tutor of this booking can perform this action.");
-            }
-        }
-
-        private static void EnsureFuturePeriod(DateTime startTimeUtc, DateTime endTimeUtc)
-        {
-            if (endTimeUtc <= startTimeUtc)
-            {
-                throw new ArgumentException("End time must be later than start time.");
-            }
-
-            if (startTimeUtc <= DateTime.UtcNow)
-            {
-                throw new ArgumentException("Booking time must be in the future.");
-            }
-        }
-
-        private static DateTime NormalizeUtc(DateTime value)
-        {
-            return value.Kind switch
-            {
-                DateTimeKind.Utc => value,
-                DateTimeKind.Local => value.ToUniversalTime(),
-                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-            };
-        }
-
-        private static BookingMinimal ToMinimal(Booking booking)
-        {
-            return new BookingMinimal(
                 booking.Id,
                 booking.StudentId,
                 booking.TutorSubjectId,
                 booking.StartTimeUtc,
                 booking.EndTimeUtc,
                 booking.CreditCost,
-                booking.Status,
-                booking.MeetingUrl);
+                Status = booking.Status.ToString(),
+                booking.StudentNote
+            };
+        }
+
+        /// <summary>
+        /// Kiểm tra xung đột thời gian (StartA < EndB AND EndA > StartB)
+        /// </summary>
+        public async Task<bool> HasScheduleConflictAsync(
+            long userId,
+            DateTime startTimeUtc,
+            DateTime endTimeUtc,
+            long? excludeBookingId = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.Set<Booking>()
+                .AsNoTracking()
+                .Where(b => (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
+                            && (b.StudentId == userId || b.TutorSubject.TutorId == userId)
+                            && b.StartTimeUtc < endTimeUtc
+                            && b.EndTimeUtc > startTimeUtc);
+
+            if (excludeBookingId.HasValue)
+            {
+                query = query.Where(b => b.Id != excludeBookingId.Value);
+            }
+
+            return await query.AnyAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Tạo đề xuất đổi lịch mới (Reschedule Proposal)
+        /// </summary>
+        public async Task<RescheduleResponse> CreateRescheduleRequestAsync(
+            long bookingId,
+            long currentUserId,
+            RescheduleCreateRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var booking = await _context.Set<Booking>()
+                .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+
+            if (booking == null)
+            {
+                throw new KeyNotFoundException($"Booking with ID {bookingId} not found.");
+            }
+
+            bool hasConflict = await HasScheduleConflictAsync(
+                currentUserId,
+                request.ProposedStartTimeUtc,
+                request.ProposedEndTimeUtc,
+                excludeBookingId: bookingId,
+                cancellationToken: cancellationToken);
+
+            if (hasConflict)
+            {
+                throw new InvalidOperationException("The proposed time slot conflicts with an existing booking.");
+            }
+
+            var rescheduleEntity = new RescheduleRequest(
+                bookingId: booking.Id,
+                requestedByUserId: currentUserId,
+                originalStartTimeUtc: booking.StartTimeUtc,
+                originalEndTimeUtc: booking.EndTimeUtc,
+                proposedStartTimeUtc: request.ProposedStartTimeUtc,
+                proposedEndTimeUtc: request.ProposedEndTimeUtc,
+                requestedAtUtc: DateTime.UtcNow,
+                reason: request.Reason
+            );
+
+            _context.Set<RescheduleRequest>().Add(rescheduleEntity);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return MapToResponse(rescheduleEntity);
+        }
+
+        /// <summary>
+        /// Phê duyệt (Approve) hoặc Từ chối (Reject) đề xuất đổi lịch
+        /// </summary>
+        public async Task<RescheduleResponse> RespondToRescheduleAsync(
+            long bookingId,
+            long proposalId,
+            long currentUserId,
+            RescheduleStatusUpdateRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                var rescheduleEntity = await _context.Set<RescheduleRequest>()
+                    .Include(r => r.Booking)
+                    .FirstOrDefaultAsync(r => r.Id == proposalId && r.BookingId == bookingId, cancellationToken);
+
+                if (rescheduleEntity == null)
+                {
+                    throw new KeyNotFoundException($"Reschedule request with ID {proposalId} for booking {bookingId} was not found.");
+                }
+
+                var booking = rescheduleEntity.Booking;
+
+                if (request.Status == RescheduleStatusAction.Approve)
+                {
+                    rescheduleEntity.Accept(currentUserId, request.ResponseNote);
+
+                    bool hasConflict = await HasScheduleConflictAsync(
+                        currentUserId,
+                        rescheduleEntity.ProposedStartTimeUtc,
+                        rescheduleEntity.ProposedEndTimeUtc,
+                        excludeBookingId: booking.Id,
+                        cancellationToken: cancellationToken);
+
+                    if (hasConflict)
+                    {
+                        throw new InvalidOperationException("Cannot approve reschedule request because of a schedule conflict.");
+                    }
+
+                    booking.ChangeSchedule(rescheduleEntity.ProposedStartTimeUtc, rescheduleEntity.ProposedEndTimeUtc);
+                }
+                else if (request.Status == RescheduleStatusAction.Reject)
+                {
+                    rescheduleEntity.Reject(currentUserId, request.ResponseNote);
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                return MapToResponse(rescheduleEntity);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+        }
+
+        private static RescheduleResponse MapToResponse(RescheduleRequest entity)
+        {
+            return new RescheduleResponse(
+                Id: entity.Id,
+                BookingId: entity.BookingId,
+                RequestedByUserId: entity.RequestedByUserId,
+                OriginalStartTimeUtc: entity.OriginalStartTimeUtc,
+                OriginalEndTimeUtc: entity.OriginalEndTimeUtc,
+                ProposedStartTimeUtc: entity.ProposedStartTimeUtc,
+                ProposedEndTimeUtc: entity.ProposedEndTimeUtc,
+                Reason: entity.Reason,
+                Status: entity.Status.ToString(),
+                RespondedByUserId: entity.RespondedByUserId,
+                ResponseNote: entity.ResponseNote,
+                RequestedAtUtc: entity.RequestedAtUtc
+            );
         }
     }
 }

@@ -24,7 +24,7 @@ namespace TutorConnect.Application.Features.Complaints.DTOs
         string? EvidenceUrl,
         ComplaintStatus Status,
         string? AdminResponse,
-        long? ResolvedByAdminId,
+        UserLiteResponse? ResolvedByAdmin, 
         DateTime SubmittedAtUtc,
         DateTime? ResolvedAtUtc);
 }
