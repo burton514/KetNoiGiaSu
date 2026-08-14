@@ -42,7 +42,8 @@ namespace TutorConnect.Infrastructure.SqlServer
             services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
             services.AddScoped<ISessionProgressRepository, SessionProgressRepository>();
             services.AddScoped<IComplaintRepository, ComplaintRepository>();
-
+            services.AddScoped<IDashboardRepository, DashboardRepository>();
+     
             return services;
         }
     }
