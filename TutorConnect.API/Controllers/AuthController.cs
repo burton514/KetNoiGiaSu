@@ -1,16 +1,17 @@
+using Azure;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using TutorConnect.Application.Features.Auth.Commands.ForgotPassword;
 using TutorConnect.Application.Features.Auth.Commands.Login;
 using TutorConnect.Application.Features.Auth.Commands.Logout;
-using TutorConnect.Application.Features.Auth.Commands.Register;
 using TutorConnect.Application.Features.Auth.Commands.RefreshToken;
-using TutorConnect.Application.Features.Auth.Commands.VerifyEmail;
+using TutorConnect.Application.Features.Auth.Commands.Register;
 using TutorConnect.Application.Features.Auth.Commands.ResendVerificationEmail;
-using TutorConnect.Application.Features.Auth.Commands.ForgotPassword;
 using TutorConnect.Application.Features.Auth.Commands.ResetPassword;
 using TutorConnect.Application.Features.Auth.Commands.ValidateResetToken;
+using TutorConnect.Application.Features.Auth.Commands.VerifyEmail;
 using TutorConnect.Application.Features.Auth.DTOs;
 
 namespace TutorConnect.API.Controllers
@@ -178,7 +179,7 @@ namespace TutorConnect.API.Controllers
         /// </summary>
         [Authorize]
         [HttpPost("logout")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult> Logout(
@@ -186,8 +187,8 @@ namespace TutorConnect.API.Controllers
             CancellationToken cancellationToken)
         {
             var command = new LogoutCommand(request);
-            await _mediator.Send(command, cancellationToken);
-            return NoContent();
+            var response = await _mediator.Send(command, cancellationToken);
+            return Ok(response);
         }
 
         /// <summary>
