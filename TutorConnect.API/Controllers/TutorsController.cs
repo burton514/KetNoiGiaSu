@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TutorConnect.Application.Features.Availability.DTOs;
 using TutorConnect.Application.Features.Matching.DTOs;
 using TutorConnect.Application.Features.Tutors.DTOs;
 using TutorConnect.Application.Services;
@@ -108,6 +109,63 @@ namespace TutorConnect.API.Controllers
             return Ok(await _tutorService.SetTutorSubjectStatusAsync(
                 tutorId,
                 tutorSubjectId,
+                request,
+                cancellationToken));
+        }
+
+        [HttpGet("me/availabilities")]
+        [Authorize(Roles = "Tutor")]
+        public async Task<ActionResult<IReadOnlyList<TutorAvailabilityResponse>>> GetMyAvailabilities(
+            CancellationToken cancellationToken)
+        {
+            var tutorId = GetCurrentUserId();
+            if (tutorId == 0) return Forbid();
+
+            return Ok(await _tutorService.GetTutorAvailabilitiesAsync(tutorId, cancellationToken));
+        }
+
+        [HttpPost("me/availabilities")]
+        [Authorize(Roles = "Tutor")]
+        public async Task<ActionResult<TutorAvailabilityResponse>> CreateMyAvailability(
+            [FromBody] AvailabilityCreateRequest request,
+            CancellationToken cancellationToken)
+        {
+            var tutorId = GetCurrentUserId();
+            if (tutorId == 0) return Forbid();
+
+            return Ok(await _tutorService.CreateTutorAvailabilityAsync(tutorId, request, cancellationToken));
+        }
+
+        [HttpPut("me/availabilities/{availabilityId:long}")]
+        [Authorize(Roles = "Tutor")]
+        public async Task<ActionResult<TutorAvailabilityResponse>> UpdateMyAvailability(
+            long availabilityId,
+            [FromBody] AvailabilityUpdateRequest request,
+            CancellationToken cancellationToken)
+        {
+            var tutorId = GetCurrentUserId();
+            if (tutorId == 0) return Forbid();
+
+            return Ok(await _tutorService.UpdateTutorAvailabilityAsync(
+                tutorId,
+                availabilityId,
+                request,
+                cancellationToken));
+        }
+
+        [HttpPut("me/availabilities/{availabilityId:long}/status")]
+        [Authorize(Roles = "Tutor")]
+        public async Task<ActionResult<TutorAvailabilityResponse>> SetMyAvailabilityStatus(
+            long availabilityId,
+            [FromBody] AvailabilityStatusRequest request,
+            CancellationToken cancellationToken)
+        {
+            var tutorId = GetCurrentUserId();
+            if (tutorId == 0) return Forbid();
+
+            return Ok(await _tutorService.SetTutorAvailabilityStatusAsync(
+                tutorId,
+                availabilityId,
                 request,
                 cancellationToken));
         }

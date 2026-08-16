@@ -10,6 +10,9 @@ namespace TutorConnect.Application.Features.Availability.DTOs
         TimeOnly StartTime,
         TimeOnly EndTime);
 
+    public record AvailabilityStatusRequest(
+        bool IsActive);
+
     public record TutorAvailabilityResponse(
         long Id,
         long TutorId,

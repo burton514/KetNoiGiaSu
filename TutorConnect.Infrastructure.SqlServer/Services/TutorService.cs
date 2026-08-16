@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TutorConnect.Application.Common.Exceptions;
+using TutorConnect.Application.Features.Availability.DTOs;
 using TutorConnect.Application.Features.Subjects.DTOs;
 using TutorConnect.Application.Features.Tutors.DTOs;
 using TutorConnect.Application.Services;
@@ -352,6 +353,224 @@ namespace TutorConnect.Infrastructure.SqlServer.Services
 
             await _dbContext.SaveChangesAsync(cancellationToken);
             return ToTutorSubjectResponse(tutorSubject);
+        }
+
+        public async Task<IReadOnlyList<TutorAvailabilityResponse>> GetTutorAvailabilitiesAsync(
+            long tutorId,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureTutorExistsAsync(tutorId, cancellationToken);
+
+            return await _dbContext.TutorAvailabilities
+                .AsNoTracking()
+                .Where(a => a.TutorId == tutorId)
+                .OrderBy(a => a.DayOfWeek)
+                .ThenBy(a => a.StartTime)
+                .Select(a => new TutorAvailabilityResponse(
+                    a.Id,
+                    a.TutorId,
+                    a.DayOfWeek,
+                    a.StartTime,
+                    a.EndTime,
+                    a.IsActive))
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<TutorAvailabilityResponse> CreateTutorAvailabilityAsync(
+            long tutorId,
+            AvailabilityCreateRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureActiveTutorByIdAsync(tutorId, cancellationToken);
+            ValidateAvailabilityPeriod(request.DayOfWeek, request.StartTime, request.EndTime);
+
+            var existing = await _dbContext.TutorAvailabilities
+                .FirstOrDefaultAsync(
+                    a => a.TutorId == tutorId
+                        && a.DayOfWeek == request.DayOfWeek
+                        && a.StartTime == request.StartTime
+                        && a.EndTime == request.EndTime,
+                    cancellationToken);
+
+            if (existing is not null)
+            {
+                if (existing.IsActive)
+                {
+                    throw new InvalidOperationException("This weekly availability already exists.");
+                }
+
+                await EnsureNoAvailabilityOverlapAsync(
+                    tutorId,
+                    request.DayOfWeek,
+                    request.StartTime,
+                    request.EndTime,
+                    existing.Id,
+                    cancellationToken);
+
+                existing.Activate();
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return ToAvailabilityResponse(existing);
+            }
+
+            await EnsureNoAvailabilityOverlapAsync(
+                tutorId,
+                request.DayOfWeek,
+                request.StartTime,
+                request.EndTime,
+                null,
+                cancellationToken);
+
+            var availability = new TutorAvailability(
+                tutorId,
+                request.DayOfWeek,
+                request.StartTime,
+                request.EndTime);
+
+            await _dbContext.TutorAvailabilities.AddAsync(availability, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return ToAvailabilityResponse(availability);
+        }
+
+        public async Task<TutorAvailabilityResponse> UpdateTutorAvailabilityAsync(
+            long tutorId,
+            long availabilityId,
+            AvailabilityUpdateRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureActiveTutorByIdAsync(tutorId, cancellationToken);
+            ValidateAvailabilityPeriod(request.DayOfWeek, request.StartTime, request.EndTime);
+
+            var availability = await _dbContext.TutorAvailabilities
+                .FirstOrDefaultAsync(
+                    a => a.Id == availabilityId && a.TutorId == tutorId,
+                    cancellationToken);
+
+            if (availability is null)
+            {
+                throw new NotFoundException("TutorAvailability not found.");
+            }
+
+            var duplicate = await _dbContext.TutorAvailabilities
+                .AsNoTracking()
+                .AnyAsync(
+                    a => a.Id != availabilityId
+                        && a.TutorId == tutorId
+                        && a.DayOfWeek == request.DayOfWeek
+                        && a.StartTime == request.StartTime
+                        && a.EndTime == request.EndTime,
+                    cancellationToken);
+
+            if (duplicate)
+            {
+                throw new InvalidOperationException("This weekly availability already exists.");
+            }
+
+            if (availability.IsActive)
+            {
+                await EnsureNoAvailabilityOverlapAsync(
+                    tutorId,
+                    request.DayOfWeek,
+                    request.StartTime,
+                    request.EndTime,
+                    availabilityId,
+                    cancellationToken);
+            }
+
+            availability.ChangePeriod(request.DayOfWeek, request.StartTime, request.EndTime);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return ToAvailabilityResponse(availability);
+        }
+
+        public async Task<TutorAvailabilityResponse> SetTutorAvailabilityStatusAsync(
+            long tutorId,
+            long availabilityId,
+            AvailabilityStatusRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            await EnsureActiveTutorByIdAsync(tutorId, cancellationToken);
+
+            var availability = await _dbContext.TutorAvailabilities
+                .FirstOrDefaultAsync(
+                    a => a.Id == availabilityId && a.TutorId == tutorId,
+                    cancellationToken);
+
+            if (availability is null)
+            {
+                throw new NotFoundException("TutorAvailability not found.");
+            }
+
+            if (request.IsActive && !availability.IsActive)
+            {
+                await EnsureNoAvailabilityOverlapAsync(
+                    tutorId,
+                    availability.DayOfWeek,
+                    availability.StartTime,
+                    availability.EndTime,
+                    availability.Id,
+                    cancellationToken);
+                availability.Activate();
+            }
+            else if (!request.IsActive && availability.IsActive)
+            {
+                availability.Deactivate();
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return ToAvailabilityResponse(availability);
+        }
+
+        private async Task EnsureNoAvailabilityOverlapAsync(
+            long tutorId,
+            DayOfWeek dayOfWeek,
+            TimeOnly startTime,
+            TimeOnly endTime,
+            long? excludeAvailabilityId,
+            CancellationToken cancellationToken)
+        {
+            var hasOverlap = await _dbContext.TutorAvailabilities
+                .AsNoTracking()
+                .AnyAsync(
+                    a => a.TutorId == tutorId
+                        && a.IsActive
+                        && a.DayOfWeek == dayOfWeek
+                        && (!excludeAvailabilityId.HasValue || a.Id != excludeAvailabilityId.Value)
+                        && startTime < a.EndTime
+                        && endTime > a.StartTime,
+                    cancellationToken);
+
+            if (hasOverlap)
+            {
+                throw new InvalidOperationException(
+                    "Weekly availability cannot overlap another active availability window on the same day.");
+            }
+        }
+
+        private static void ValidateAvailabilityPeriod(
+            DayOfWeek dayOfWeek,
+            TimeOnly startTime,
+            TimeOnly endTime)
+        {
+            if (!Enum.IsDefined(dayOfWeek))
+            {
+                throw new ArgumentOutOfRangeException(nameof(dayOfWeek), "Unknown DayOfWeek value.");
+            }
+
+            if (endTime <= startTime)
+            {
+                throw new ArgumentException(
+                    "End time must be later than start time. Overnight availability must be split into two weekly windows.");
+            }
+        }
+
+        private static TutorAvailabilityResponse ToAvailabilityResponse(TutorAvailability availability)
+        {
+            return new TutorAvailabilityResponse(
+                availability.Id,
+                availability.TutorId,
+                availability.DayOfWeek,
+                availability.StartTime,
+                availability.EndTime,
+                availability.IsActive);
         }
 
         private async Task<TutorProfile> LoadProfileAsync(
