@@ -1,3 +1,4 @@
+using TutorConnect.Application.Features.Availability.DTOs;
 using TutorConnect.Application.Features.Tutors.DTOs;
 
 namespace TutorConnect.Application.Services
@@ -17,5 +18,10 @@ namespace TutorConnect.Application.Services
         Task<TutorSubjectResponse> CreateTutorSubjectAsync(long tutorId, TutorSubjectCreateRequest request, CancellationToken cancellationToken = default);
         Task<TutorSubjectResponse> UpdateTutorSubjectAsync(long tutorId, long tutorSubjectId, TutorSubjectUpdateRequest request, CancellationToken cancellationToken = default);
         Task<TutorSubjectResponse> SetTutorSubjectStatusAsync(long tutorId, long tutorSubjectId, TutorSubjectStatusRequest request, CancellationToken cancellationToken = default);
+
+        Task<IReadOnlyList<TutorAvailabilityResponse>> GetTutorAvailabilitiesAsync(long tutorId, CancellationToken cancellationToken = default);
+        Task<TutorAvailabilityResponse> CreateTutorAvailabilityAsync(long tutorId, AvailabilityCreateRequest request, CancellationToken cancellationToken = default);
+        Task<TutorAvailabilityResponse> UpdateTutorAvailabilityAsync(long tutorId, long availabilityId, AvailabilityUpdateRequest request, CancellationToken cancellationToken = default);
+        Task<TutorAvailabilityResponse> SetTutorAvailabilityStatusAsync(long tutorId, long availabilityId, AvailabilityStatusRequest request, CancellationToken cancellationToken = default);
     }
 }
