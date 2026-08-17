@@ -1,4 +1,5 @@
-﻿using TutorConnect.Domain.Enums;
+﻿using System;
+using TutorConnect.Domain.Enums;
 
 namespace TutorConnect.Application.Features.Bookings.DTOs
 {
