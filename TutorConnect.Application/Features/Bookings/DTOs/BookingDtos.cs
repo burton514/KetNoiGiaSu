@@ -20,9 +20,34 @@ namespace TutorConnect.Application.Features.Bookings.DTOs
         DateTime EndTimeUtc,
         int CreditCost,
         BookingStatus Status,
-        string? StudentNote
+        string? StudentNote,
+        string? MeetingUrl,
+        string? StatusReason,
+        long? CancelledByUserId
     );
 
+    public record CancelBookingRequest(
+        string Reason
+    );
+
+    public record RejectBookingRequest(
+        string Reason
+    );
+
+    public record UpdateMeetingUrlRequest(
+        string MeetingUrl
+    );
+
+    // Dùng đúng cấu trúc của SessionProgress trong project
+    public record CompleteBookingRequest(
+        long LearningGoalId,
+        double? Score,
+        double? MaxScore,
+        double GoalProgressPercent,
+        string TutorComment
+    );
+
+    // Các DTO này đang được SessionService của project sử dụng
     public record BookingMinimal(
         long Id,
         long StudentId,
@@ -36,6 +61,6 @@ namespace TutorConnect.Application.Features.Bookings.DTOs
 
     public record CompleteBookingResult(
         BookingMinimal Booking,
-        SessionProgressResponse Progress
+        SessionProgressResponse SessionProgress
     );
 }
