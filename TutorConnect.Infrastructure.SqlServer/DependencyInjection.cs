@@ -29,6 +29,8 @@ namespace TutorConnect.Infrastructure.SqlServer
             // Register application services
             services.AddScoped<TutorConnect.Application.Services.ISessionService, SessionService>();
             services.AddScoped<TutorConnect.Application.Services.IBookingService, BookingService>();
+            services.AddScoped<TutorConnect.Application.Services.ILearningGoalService, LearningGoalService>();
+            services.AddScoped<TutorConnect.Application.Services.IReviewService, ReviewService>();
             services.AddScoped<TutorMetricsProvider>();
             services.AddScoped<TutorConnect.Application.Services.ITutorService, TutorService>();
             services.AddScoped<TutorConnect.Application.Services.ISubjectService, SubjectService>();
