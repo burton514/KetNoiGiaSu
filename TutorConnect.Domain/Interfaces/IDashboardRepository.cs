@@ -20,8 +20,7 @@ namespace TutorConnect.Domain.Interfaces
         long EligibleGoals);
 
     /// <summary>
-    /// Tổng hợp các chỉ số dashboard cho Admin. Trả về các struct kết quả gọn nhẹ
-    ///  vì các truy vấn đều là aggregate (Count/GroupBy).
+    /// Tổng hợp các chỉ số dashboard cho Admin.
     /// </summary>
     public interface IDashboardRepository
     {
