@@ -23,7 +23,7 @@ namespace TutorConnect.Infrastructure.SqlServer.Repositories
                 .AsNoTracking()
                 .Where(b => b.StartTimeUtc >= fromUtc && b.StartTimeUtc < toUtc)
                 .GroupBy(b => b.Status)
-                .Select(g => new { Status = g.Key, Count = g.LongCount() })
+                .Select(g => new { Status = g.Key, Count = (long)g.Count() })
                 .ToListAsync(cancellationToken);
 
             long CountOf(BookingStatus status) => counts.FirstOrDefault(c => c.Status == status)?.Count ?? 0;
@@ -43,14 +43,23 @@ namespace TutorConnect.Infrastructure.SqlServer.Repositories
             int top,
             CancellationToken cancellationToken = default)
         {
-            return await _context.Bookings
-                .AsNoTracking()
-                .Where(b => b.StartTimeUtc >= fromUtc && b.StartTimeUtc < toUtc)
-                .GroupBy(b => new { b.TutorSubject.SubjectId, b.TutorSubject.Subject.Name })
-                .Select(g => new PopularSubjectResult(g.Key.SubjectId, g.Key.Name, g.LongCount()))
-                .OrderByDescending(r => r.BookingCount)
-                .Take(top)
-                .ToListAsync(cancellationToken);
+            var raw = await _context.Bookings
+            .AsNoTracking()
+            .Where(b => b.StartTimeUtc >= fromUtc && b.StartTimeUtc < toUtc)
+            .GroupBy(b => new { b.TutorSubject.SubjectId, b.TutorSubject.Subject.Name })
+            .Select(g => new
+            {
+             g.Key.SubjectId,
+             g.Key.Name,
+             BookingCount = g.Count()
+            })
+            .OrderByDescending(r => r.BookingCount)
+            .Take(top)
+            .ToListAsync(cancellationToken);
+
+            return raw
+                .Select(r => new PopularSubjectResult(r.SubjectId, r.Name, r.BookingCount))
+                .ToList();
         }
 
         public async Task<GoalCompletionRateResult> GetGoalCompletionRateAsync(CancellationToken cancellationToken = default)

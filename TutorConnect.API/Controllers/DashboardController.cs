@@ -19,7 +19,7 @@ namespace TutorConnect.API.Controllers
         }
 
         /// <summary>
-        /// Dashboard tổng hợp cho Admin. Mặc định tính 30 ngày gần nhất nếu không truyền fromUtc/toUtc.
+        /// Dashboard tổng hợp cho Admin
         /// </summary>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
